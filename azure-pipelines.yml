@@ -1,37 +1,49 @@
 trigger:
   branches:
     include:
-      - develop
+      - feature
 pr:
   branches:
     include:
-      - develop
+      - feature
 
 pool:
  vmImage: 'ubuntu-latest'
 
 stages:
 - stage: Build
-  displayName: 'Build stage'
   jobs:
-  - job: BuildJob
-    displayName: 'Build Application'
-
+  - job: First
     steps:
+      - bash: echo Build FirstJob
+      - bash: echo $(PipelineLevelVariables)
+      - bash: echo $(Build.BuildNumber)
+      - bash: echo $(Build.BuildId)
+      - bash: echo $(Build.SourceBranchName)
+      - bash: echo $(Build.SourcesDirectory)
+      - bash: echo $(System.DefaultWorkingDirectory)
+      - bash: ls -R $(System.DefaultWorkingDirectory)
+      - bash: echo $(Build.ArtifactStagingDirectory)
+      - bash: java -version
+      - bash: node --version
+      - bash: python --version 
+      - bash: mvn -version 
+      - bash: ls -R $(Build.ArtifactStagingDirectory)
+      - task: CopyFiles@2
+        inputs:
+          SourceFolder: '$(System.DefaultWorkingDirectory)'
+          Contents: |
+            **
+            docker-compose-tests.yml
+            docker-compose.yml
+          TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
-     - checkout: self
+      - bash: ls -R $(Build.ArtifactStagingDirectory)
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: 'drop'
+          publishLocation: 'Container'
+  
 
-     - script: |
-        echo "Installing dependencies"
-        displayName: 'Install dependencies'
-
-     - script: |
-        echo "Building the application"
-        displayName: 'Build application'
-     - script: |
-        echo "Running tests"
-        displayName: 'Run tests'
-     - script: |
-        echo "Running security scans"
-        displayName: 'Run security scans' 
 
