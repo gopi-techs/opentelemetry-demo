@@ -6,6 +6,10 @@ on:
       - develop
       - main
 
+  push:
+    branches:
+      - -develop
+
 jobs:
   validate:
     runs-on: ubuntu-latest
