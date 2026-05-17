@@ -60,7 +60,7 @@ stages:
         # ----------------------------------------------------
         - script: |
             cd src/product-catalog
-            go test -v ./... -coverprofile=coverage.out
+            go test -v ./... 
           displayName: "Run Go Unit Tests"
         # ----------------------------------------------------
         # Build Application Binary
