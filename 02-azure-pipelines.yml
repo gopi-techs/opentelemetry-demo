@@ -1,19 +1,219 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
+---
 trigger:
-- main
+  branches:
+    include:
+      - main
+      - develop
 
-pool:
-  vmImage: ubuntu-latest
+pr:
+  branches:
+    include:
+      - main
+      - develop
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  dockerRegistryServiceConnection: 'dockerhub-service-connection'
+  imageRepository: 'yourdockerhubusername/productcatalogservice'
+  dockerfilePath: 'src/product-catalog/Dockerfile'
+  tag: '$(Build.BuildId)'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+# ============================================================
+# STAGE 1 — BUILD + UNIT TEST
+# ============================================================
+
+stages:
+- stage: Build_Test
+  displayName: "Build and Unit Test"
+
+  jobs:
+    - job: Build
+      displayName: "Go Build and Test"
+
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+
+        # ----------------------------------------------------
+        # Checkout Code
+        # ----------------------------------------------------
+        - checkout: self
+          fetchDepth: 0
+
+        # ----------------------------------------------------
+        # Install Go
+        # ----------------------------------------------------
+        - task: GoTool@0
+          inputs:
+            version: '1.22'
+          displayName: 'Install Go'
+
+        # ----------------------------------------------------
+        # Download Dependencies
+        # ----------------------------------------------------
+        - script: |
+            cd src/product-catalog
+            go mod download
+          displayName: "Download Go Modules"
+
+        # ----------------------------------------------------
+        # Run Unit Tests
+        # ----------------------------------------------------
+        - script: |
+            cd src/product-catalog
+            go test ./... -v
+          displayName: "Run Go Unit Tests"
+
+        # ----------------------------------------------------
+        # Build Application Binary
+        # ----------------------------------------------------
+        - script: |
+            cd src/product-catalog
+            go build -o app
+          displayName: "Build Go Binary"
+
+        # ----------------------------------------------------
+        # Build Docker Image
+        # ----------------------------------------------------
+        - task: Docker@2
+          displayName: "Build Docker Image"
+          inputs:
+            command: build
+            repository: $(imageRepository)
+            dockerfile: $(dockerfilePath)
+            tags: |
+              $(tag)
+
+# ============================================================
+# STAGE 2 — SECURITY SCAN
+# ============================================================
+
+- stage: Security_Scan
+  displayName: "Security Scan"
+
+  dependsOn: Build_Test
+
+  jobs:
+    - job: TrivyScan
+      displayName: "Run Trivy Security Scan"
+
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+
+        # ----------------------------------------------------
+        # Install Trivy
+        # ----------------------------------------------------
+        - script: |
+            sudo apt-get update
+
+            sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+
+            echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+
+            sudo apt-get update
+            sudo apt-get install trivy -y
+          displayName: "Install Trivy"
+
+        # ----------------------------------------------------
+        # Build Image Again
+        # ----------------------------------------------------
+        - task: Docker@2
+          displayName: "Build Image For Scan"
+          inputs:
+            command: build
+            repository: $(imageRepository)
+            dockerfile: $(dockerfilePath)
+            tags: |
+              $(tag)
+
+        # ----------------------------------------------------
+        # Run Security Scan
+        # ----------------------------------------------------
+        - script: |
+            trivy image --severity HIGH,CRITICAL $(imageRepository):$(tag)
+          displayName: "Run Trivy Scan"
+
+# ============================================================
+# STAGE 3 — PUSH IMAGE
+# ============================================================
+
+- stage: Push_Image
+  displayName: "Push Docker Image"
+
+  dependsOn: Security_Scan
+
+  jobs:
+    - job: Push
+
+      pool:
+        vmImage: ubuntu-latest
+
+      steps:
+
+        # ----------------------------------------------------
+        # Build Docker Image
+        # ----------------------------------------------------
+        - task: Docker@2
+          displayName: "Build Docker Image"
+          inputs:
+            command: build
+            repository: $(imageRepository)
+            dockerfile: $(dockerfilePath)
+            tags: |
+              $(tag)
+
+        # ----------------------------------------------------
+        # Push To Docker Hub
+        # ----------------------------------------------------
+        - task: Docker@2
+          displayName: "Push Docker Image"
+          inputs:
+            command: push
+            repository: $(imageRepository)
+            containerRegistry: $(dockerRegistryServiceConnection)
+            tags: |
+              $(tag)
+
+# ============================================================
+# STAGE 4 — DEPLOY TO QA
+# ============================================================
+
+- stage: Deploy_QA
+  displayName: "Deploy To QA"
+
+  dependsOn: Push_Image
+
+  jobs:
+    - deployment: DeployQA
+
+      displayName: "Deploy Application"
+
+      environment: QA
+
+      pool:
+        vmImage: ubuntu-latest
+
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+              # ------------------------------------------------
+              # Pull and Run Container
+              # ------------------------------------------------
+              - script: |
+                  docker pull $(imageRepository):$(tag)
+
+                  docker stop productcatalog || true
+                  docker rm productcatalog || true
+
+                  docker run -d \
+                    --name productcatalog \
+                    -p 8080:8080 \
+                    $(imageRepository):$(tag)
+                displayName: "Run Docker Container"
+
