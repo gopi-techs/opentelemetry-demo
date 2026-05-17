@@ -365,14 +365,14 @@ func (p *productCatalog) GetProduct(ctx context.Context, req *pb.GetProductReque
 		msg := "Error: Product Catalog Fail Feature Flag Enabled"
 		span.SetStatus(otelcodes.Error, msg)
 		span.AddEvent(msg)
-		return nil, status.Errorf(codes.Internal, "internal error: %v", err)
+		return nil, return nil, status.Errorf(codes.Internal, "product catalog failure triggered")
 	}
 	found, err := getProductFromDB(ctx, req.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Product Not Found: %s", req.Id)
 		span.SetStatus(otelcodes.Error, msg)
 		span.AddEvent(msg)
-		return nil, status.Errorf(codes.Internal, "internal error: %v", err)
+		return nil, return nil, status.Errorf(codes.Internal, "product catalog failure triggered")
 	}
 
 	span.AddEvent("Product Found")
