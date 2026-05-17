@@ -59,8 +59,9 @@ stages:
         # Run Unit Tests
         # ----------------------------------------------------
         - script: |
-            echo "Skipping Go unit tests temporarily"
-          displayName: "Skip Unit Tests"
+            cd src/product-catalog
+            go test -v ./... -coverprofile=coverage.out
+          displayName: "Run Go Unit Tests"
         # ----------------------------------------------------
         # Build Application Binary
         # ----------------------------------------------------
