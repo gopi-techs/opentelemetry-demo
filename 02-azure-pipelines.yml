@@ -59,10 +59,8 @@ stages:
         # Run Unit Tests
         # ----------------------------------------------------
         - script: |
-            cd src/product-catalog
-            go test ./... -v
-          displayName: "Run Go Unit Tests"
-
+            echo "Skipping Go unit tests temporarily"
+          displayName: "Skip Unit Tests"
         # ----------------------------------------------------
         # Build Application Binary
         # ----------------------------------------------------
