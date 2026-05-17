@@ -218,3 +218,37 @@ stages:
                     $(imageRepository):$(tag)
                 displayName: "Run Docker Container"
 
+
+
+
+
+############################ Release pipeline under testing #########################
+
+#- stage: Deploy_QA
+#  displayName: "Deploy To Azure Container Apps"
+#
+#  dependsOn: Push_Image
+#
+#  jobs:
+#    - job: Deploy
+#      displayName: "Deploy Application"
+#
+#     pool:
+#        vmImage: ubuntu-latest
+#
+#      steps:
+#
+#        - task: AzureCLI@2
+#          displayName: "Deploy To Azure Container Apps"
+#
+#          inputs:
+#            azureSubscription: 'azure-service-connection'
+#            scriptType: bash
+#            scriptLocation: inlineScript
+#
+#            inlineScript: |
+#              az containerapp update \
+#                --name product-catalog-app \
+#                --resource-group rg-opentelemetry-demo \
+#                --image docker.io/gopiaj97/productcatalogservice:$(tag)
+
