@@ -12,11 +12,10 @@ pr:
       - develop
 
 variables:
-  dockerRegistryServiceConnection: 'dockerhub-service-connection'
-  imageRepository: 'yourdockerhubusername/productcatalogservice'
+  dockerRegistryServiceConnection: 'gopiaj97-dockerhub'
+  imageRepository: 'gopiaj97/productcatalogservice'
   dockerfilePath: 'src/product-catalog/Dockerfile'
   tag: '$(Build.BuildId)'
-
 # ============================================================
 # STAGE 1 — BUILD + UNIT TEST
 # ============================================================
